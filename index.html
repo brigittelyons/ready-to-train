@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Ready to Train?</title>
+<link rel="apple-touch-icon" href="icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --ink: #1a1a1a;
+    --ink2: #6b6b6b;
+    --ink3: #b0b0b0;
+    --rule: #e8e8e8;
+    --rule2: #f5f5f5;
+    --bg: #ffffff;
+    --bg2: #fafafa;
+    --plum: #832161;
+    --periwinkle: #9b7ede;
+    --gold: #e8db7d;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg2);
+    color: var(--ink);
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .app {
+    max-width: 680px;
+    margin: 0 auto;
+    background: var(--bg);
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  .header {
+    padding: 24px 20px 14px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: baseline; }
+  .wordmark { font-family: 'Inter', sans-serif; font-size: 26px; color: var(--ink); letter-spacing: -0.02em; }
+  .session-date { font-size: 14px; font-weight: 400; color: var(--plum); }
+
+  /* Main content */
+  .content { flex: 1; overflow-y: auto; padding: 0 0 130px; }
+  @media (min-width: 600px) {
+    .exercise-card { margin: 12px 24px 0; }
+    .accessories-section { margin: 12px 24px 0; }
+    .header { padding: 40px 24px 16px; }
+    .content { padding: 0 0 180px; }
+  }
+
+  /* Empty state */
+  .empty-state {
+    padding: 60px 24px;
+    text-align: center;
+  }
+  .empty-state-title { font-family: 'Inter', sans-serif; font-size: 22px; color: var(--ink); margin-bottom: 8px; }
+  .empty-state-sub { font-size: 14px; color: var(--ink2); line-height: 1.6; }
+
+  /* Exercise card */
+  .exercise-card {
+    margin: 12px 16px 0;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .exercise-card-header {
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--rule2);
+  }
+  .exercise-name { font-size: 15px; font-weight: 500; color: var(--ink); }
+
+
+  /* Last session ref */
+  .last-session-ref {
+    padding: 10px 16px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--rule2);
+  }
+  .last-session-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink3); margin-bottom: 4px; }
+  .last-session-sets { font-size: 12px; color: var(--ink2); line-height: 1.8; }
+
+  /* Sets logged */
+  .sets-logged { padding: 10px 16px; }
+  .set-row {
+    display: grid;
+    grid-template-columns: 28px 1fr 1fr 32px;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--rule2);
+  }
+  .set-row:last-child { border-bottom: none; }
+  .set-num { font-size: 11px; color: var(--ink3); font-weight: 500; }
+  .set-val { font-size: 14px; color: var(--ink); }
+  .set-delete {
+    background: none;
+    border: none;
+    color: var(--ink3);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .set-delete:active { color: #c0392b; }
+
+  /* Log set form */
+  .log-form {
+    padding: 12px 16px;
+    border-top: 1px solid var(--rule2);
+  }
+  .log-form-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .log-form input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-size: 16px;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    outline: none;
+    -webkit-appearance: none;
+  }
+  .log-form input:focus { border-color: var(--ink); }
+  .log-form input::placeholder { color: var(--ink3); }
+  .log-btn {
+    width: 100%;
+    background: var(--plum);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 13px;
+    font-size: 15px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .log-btn:active { opacity: 0.8; }
+
+  /* Accessories suggestion */
+  .accessories-section {
+    margin: 12px 16px 0;
+    padding: 14px 16px;
+    background: var(--bg2);
+    border-radius: var(--radius);
+    border: 1px solid var(--rule);
+  }
+  .accessories-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink3); margin-bottom: 10px; }
+  .accessory-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .accessory-chip {
+    padding: 12px 18px;
+    border: 1px solid var(--gold);
+    border-radius: 20px;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--bg);
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: border-color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .accessory-chip:active { background: var(--bg2); }
+  .accessory-chip.added { color: var(--ink3); border-style: dashed; cursor: default; }
+
+  /* Bottom action bar */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 680px;
+    background: var(--bg);
+    border-top: 1px solid var(--rule);
+    padding: 10px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 10;
+  }
+  .btn-primary {
+    width: 100%;
+    background: var(--plum);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-primary:active { opacity: 0.8; }
+  .btn-secondary {
+    flex: 1;
+    background: transparent;
+    color: var(--periwinkle);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    cursor: pointer;
+  }
+  .btn-secondary:active { opacity: 0.7; }
+
+  /* Modal / sheet */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 100;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet {
+    width: 100%;
+    max-width: 430px;
+    background: var(--bg);
+    border-radius: 20px 20px 0 0;
+    padding: 20px 20px 40px;
+    max-height: 80vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: var(--rule);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+  .modal-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: var(--ink);
+  }
+
+  .field-label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: 6px;
+    display: block;
+  }
+  .field { margin-bottom: 16px; }
+
+  select {
+    width: 100%;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 15px;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23b0b0b0' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+  }
+  select:focus { border-color: var(--ink); }
+
+  /* Last session preview in modal */
+  .preview-box {
+    background: var(--bg2);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 20px;
+    min-height: 52px;
+  }
+  .preview-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink3); margin-bottom: 6px; }
+  .preview-content { font-size: 13px; color: var(--ink2); line-height: 1.8; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 200;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  /* Loading */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--ink3);
+    font-size: 13px;
+    gap: 8px;
+  }
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--rule);
+    border-top-color: var(--ink2);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg { padding: 20px; text-align: center; color: #c0392b; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="session-date" id="session-date"></div>
+  </div>
+
+  <div class="content" id="content">
+    <div class="loading"><div class="spinner"></div> Getting your workout ready...</div>
+  </div>
+
+  <div class="bottom-bar" id="bottom-bar" style="display:none;">
+    <button class="btn-primary" id="btn-add-lift">+ Start session</button>
+    <button class="btn-secondary" id="btn-finish">Finish session</button>
+  </div>
+</div>
+
+<!-- Add Lift Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add a lift</div>
+
+    <div class="field">
+      <label class="field-label">Primary lift</label>
+      <select id="select-group">
+        <option value="">Select...</option>
+      </select>
+    </div>
+
+    <div class="field" id="exercise-field" style="display:none;">
+      <label class="field-label">Exercise</label>
+      <select id="select-exercise">
+        <option value="">Select...</option>
+      </select>
+    </div>
+
+    <div id="preview-section" style="display:none;">
+      <div class="preview-box">
+        <div class="preview-label">Last session</div>
+        <div class="preview-content" id="preview-content">No previous sessions found.</div>
+      </div>
+      <button class="btn-primary" style="width:100%; background: var(--plum);" id="btn-confirm-add">Add to session</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbyiGFkJ9p1RAapuPK_FT_-ownF6qUDSmnCPlj9MfrW6N_X2OZPQL4h6G048Ut4e8ki9/exec';
+
+let exercises = [];
+let sessionId = 'S' + Date.now();
+let sessionExercises = []; // { exercise, sets: [{weight, reps}] }
+let sessionStarted = false;
+
+function today() {
+  return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+
+async function fetchExercises() {
+  try {
+    const exRes = await fetch(`${API}?action=getExercises`);
+    exercises = await exRes.json();
+    init();
+    loadAllSessions();
+  } catch(e) {
+    document.getElementById('content').innerHTML = '<div class="error-msg">Could not load. Check your connection and refresh.</div>';
+  }
+}
+
+let allSessions = [];
+
+async function loadAllSessions() {
+  try {
+    const res = await fetch(`${API}?action=getSessions`);
+    allSessions = await res.json();
+  } catch(e) {
+    allSessions = [];
+  }
+}
+
+function fetchLastSession(exerciseId) {
+  return allSessions.filter(s => String(s.exercise_id) === String(exerciseId));
+}
+
+async function logSet(exerciseId, exerciseName, setNumber, weight, reps) {
+  try {
+    await fetch(API, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'logSet',
+        date: todayISO(),
+        session_id: sessionId,
+        exercise_id: exerciseId,
+        exercise_name: exerciseName,
+        set_number: setNumber,
+        weight_lbs: weight,
+        reps: reps
+      })
+    });
+  } catch(e) {
+    showToast('Failed to save set');
+  }
+}
+
+function init() {
+  document.getElementById('session-date').textContent = today();
+  renderContent();
+  document.getElementById('bottom-bar').style.display = 'flex';
+  document.getElementById('btn-add-lift').addEventListener('click', openModal);
+  document.getElementById('btn-finish').addEventListener('click', finishSession);
+  setupModal();
+}
+
+function renderContent() {
+  const content = document.getElementById('content');
+  if (sessionExercises.length === 0) {
+    content.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-title">Ready to train?</div>
+        <div class="empty-state-sub">Tap "Start session" to begin.<br>You can add as many lifts as you need.</div>
+      </div>`;
+    return;
+  }
+
+  let html = '';
+  sessionExercises.forEach((entry, idx) => {
+    const isDone = entry.done;
+    html += `<div class="exercise-card" id="card-${idx}">
+      <div class="exercise-card-header">
+        <div class="exercise-name"><span style="border-bottom: 2px solid var(--gold); padding-bottom: 2px;">${entry.exercise.name}</span></div>
+        ${!isDone ? `<button onclick="removeLift(${idx})" style="background:none;border:none;color:var(--ink3);font-size:18px;cursor:pointer;padding:0 0 0 8px;line-height:1;">×</button>` : ''}
+      </div>`;
+
+    if (entry.lastSets && entry.lastSets.length > 0) {
+      const grouped = groupBySession(entry.lastSets);
+      const lastDate = grouped[0].date;
+      html += `<div class="last-session-ref">
+        <div class="last-session-label" style="color: var(--ink3)">Last session · ${formatDate(lastDate)}</div>
+        <div class="last-session-sets">${grouped[0].sets.map(s => `${s.weight_lbs || s.weight_kg ? (s.weight_lbs || s.weight_kg) + ' lbs' : 'bodyweight'} · ${s.reps} reps`).join('<br>')}</div>
+      </div>`;
+    }
+
+    if (entry.rows.length > 0) {
+      html += `<div class="sets-logged">`;
+      entry.rows.forEach((r, ri) => {
+        const savedNum = entry.rows.slice(0, ri).filter(x => x.saved).length + 1;
+        if (r.saved) {
+          html += `<div class="set-row">
+            <div class="set-num">S${savedNum}</div>
+            <div class="set-val">${r.weight != null ? r.weight + ' lbs' : 'bodyweight'}</div>
+            <div class="set-val">${r.reps} reps</div>
+            <button class="set-delete" onclick="deleteRow(${idx},${ri})" aria-label="Remove set">×</button>
+          </div>`;
+        } else {
+          html += `<div class="set-row">
+            <div class="set-num" style="color:var(--ink3)">S${entry.rows.filter(x=>x.saved).length+1}</div>
+            <input type="number" inputmode="decimal" placeholder="lbs" id="kg-${idx}-${ri}" step="0.5" style="flex:1;min-width:0;border:1px solid var(--rule);border-radius:var(--radius-sm);padding:8px 10px;font-size:14px;font-family:Inter,sans-serif;color:var(--ink);background:var(--bg);outline:none;-webkit-appearance:none;">
+            <input type="number" inputmode="numeric" placeholder="reps" id="reps-${idx}-${ri}" style="flex:1;min-width:0;border:1px solid var(--rule);border-radius:var(--radius-sm);padding:8px 10px;font-size:14px;font-family:Inter,sans-serif;color:var(--ink);background:var(--bg);outline:none;-webkit-appearance:none;">
+            <button class="set-delete" onclick="deleteRow(${idx},${ri})" aria-label="Remove row">×</button>
+          </div>`;
+        }
+      });
+      html += `</div>`;
+    }
+
+    if (!isDone) {
+      html += `<div style="padding: 8px 16px 12px;">
+        <button onclick="addRow(${idx})" style="width:100%;background:transparent;color:var(--ink2);border:1px solid var(--rule);border-radius:var(--radius-sm);padding:11px;font-size:14px;font-family:Inter,sans-serif;cursor:pointer;">+ Add set</button>
+      </div>`;
+    }
+
+    html += `</div>`;
+  });
+
+  // Accessories
+  const lastEntry = sessionExercises[sessionExercises.length - 1];
+  if (lastEntry) {
+    const accessories = getAccessories(lastEntry.exercise);
+    if (accessories.length > 0) {
+      const addedIds = sessionExercises.map(e => String(e.exercise.id));
+      const available = accessories.filter(acc => !addedIds.includes(String(acc.id)));
+      if (available.length > 0) {
+        html += `<div class="accessories-section">
+          <div class="accessories-label">Suggested accessories</div>
+          <div class="accessory-chips">`;
+        available.forEach(acc => {
+          html += `<button class="accessory-chip" onclick="addAccessory(${acc.id})">${acc.name}</button>`;
+        });
+        html += `</div></div>`;
+      }
+    }
+  }
+
+  content.innerHTML = html;
+  content.scrollTop = content.scrollHeight;
+  document.getElementById('btn-add-lift').textContent = sessionExercises.length === 0 ? '+ Start session' : '+ Add lift';
+}
+
+function groupBySession(rows) {
+  const map = {};
+  rows.forEach(r => {
+    const key = r.session_id;
+    if (!map[key]) map[key] = { date: r.date, sets: [] };
+    map[key].sets.push(r);
+  });
+  return Object.values(map).sort((a,b) => new Date(b.date) - new Date(a.date));
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  let d;
+  if (typeof iso === 'number') {
+    d = new Date(Math.round((iso - 25569) * 86400 * 1000));
+  } else {
+    d = new Date(String(iso));
+  }
+  if (isNaN(d)) return String(iso);
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' });
+}
+
+function getAccessories(exercise) {
+  const ids = String(exercise.accessories || '').split(',').map(s => s.trim()).filter(Boolean);
+  return exercises.filter(e => ids.includes(String(e.id)));
+}
+
+
+
+function addRow(idx) {
+  const entry = sessionExercises[idx];
+  const unsavedRows = entry.rows.map((r,i)=>({r,i})).filter(({r})=>!r.saved);
+  for (const {r, i} of unsavedRows) {
+    const kg = document.getElementById(`kg-${idx}-${i}`)?.value;
+    const reps = document.getElementById(`reps-${idx}-${i}`)?.value;
+    if (reps) {
+      r.weight = kg ? parseFloat(kg) : null;
+      r.reps = parseInt(reps);
+      r.saved = true;
+    }
+  }
+  entry.rows.push({ saved: false });
+  renderContent();
+}
+
+function deleteRow(exerciseIdx, rowIdx) {
+  sessionExercises[exerciseIdx].rows.splice(rowIdx, 1);
+  renderContent();
+}
+
+function removeLift(idx) {
+  sessionExercises.splice(idx, 1);
+  renderContent();
+}
+
+let addingAccessory = false;
+async function addAccessory(exerciseId) {
+  if (addingAccessory) return;
+  addingAccessory = true;
+  const ex = exercises.find(e => String(e.id) === String(exerciseId));
+  if (!ex) { addingAccessory = false; return; }
+  const lastSets = fetchLastSession(exerciseId);
+  sessionExercises.push({ exercise: ex, rows: [{ saved: false }], lastSets, done: false });
+  renderContent();
+  addingAccessory = false;
+}
+
+async function finishSession() {
+  if (sessionExercises.length === 0) { showToast('No lifts logged yet'); return; }
+  // Read any unsaved input values before finishing
+  sessionExercises.forEach((entry, idx) => {
+    entry.rows.forEach((r, ri) => {
+      if (!r.saved) {
+        const kg = document.getElementById(`kg-${idx}-${ri}`)?.value;
+        const reps = document.getElementById(`reps-${idx}-${ri}`)?.value;
+        if (reps) {
+          r.weight = kg ? parseFloat(kg) : null;
+          r.reps = parseInt(reps);
+          r.saved = true;
+        }
+      }
+    });
+  });
+  showToast('Saving...');
+  let setCounter = 1;
+  for (const entry of sessionExercises) {
+    const savedRows = entry.rows.filter(r => r.saved);
+    for (let i = 0; i < savedRows.length; i++) {
+      const r = savedRows[i];
+      await logSet(entry.exercise.id, entry.exercise.name, i + 1, r.weight, r.reps);
+    }
+  }
+  sessionExercises.forEach(e => e.done = true);
+  renderContent();
+  document.getElementById('btn-add-lift').textContent = '+ New session';
+  document.getElementById('btn-finish').style.display = 'none';
+  document.getElementById('btn-add-lift').onclick = () => { location.reload(); };
+  showToast('Session saved!');
+}
+
+// Modal
+function setupModal() {
+  const overlay = document.getElementById('modal-overlay');
+  const selGroup = document.getElementById('select-group');
+  const selExercise = document.getElementById('select-exercise');
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+  const groups = ['All lifts', ...[...new Set(
+    exercises.flatMap(e => String(e.muscle_group).split(',').map(g => g.trim()))
+  )].sort()];
+
+  groups.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g; opt.textContent = g;
+    selGroup.appendChild(opt);
+  });
+
+  selGroup.addEventListener('change', () => {
+    const g = selGroup.value;
+    selExercise.innerHTML = '<option value="">Select...</option>';
+    document.getElementById('exercise-field').style.display = g ? 'block' : 'none';
+    document.getElementById('preview-section').style.display = 'none';
+    if (!g) return;
+
+    const addedIds = sessionExercises.map(e => String(e.exercise.id));
+    const filtered = (g === 'All lifts'
+      ? [...exercises].sort((a,b) => a.name.localeCompare(b.name))
+      : exercises.filter(e =>
+          String(e.muscle_group).split(',').map(s=>s.trim()).includes(g) &&
+          String(e.type).trim().toLowerCase() === 'primary'
+        )
+    ).filter(e => !addedIds.includes(String(e.id)));
+    filtered.forEach(ex => {
+      const opt = document.createElement('option');
+      opt.value = ex.id; opt.textContent = ex.name;
+      selExercise.appendChild(opt);
+    });
+  });
+
+  selExercise.addEventListener('change', async () => {
+    const id = selExercise.value;
+    if (!id) { document.getElementById('preview-section').style.display = 'none'; return; }
+    document.getElementById('preview-section').style.display = 'block';
+    document.getElementById('preview-content').textContent = 'Loading...';
+    const rows = fetchLastSession(id);
+    const previewEl = document.getElementById('preview-content');
+    if (!rows || rows.length === 0) {
+      previewEl.textContent = 'No previous sessions.';
+    } else {
+      const grouped = groupBySession(rows);
+      const last = grouped[0];
+      previewEl.innerHTML = `${formatDate(last.date)}<br>${last.sets.map(s=>`${s.weight_lbs || s.weight_kg ? (s.weight_lbs || s.weight_kg) + ' lbs' : 'bodyweight'} · ${s.reps} reps`).join('<br>')}`;
+    }
+  });
+
+  let adding = false;
+  document.getElementById('btn-confirm-add').addEventListener('click', async () => {
+    const id = selExercise.value;
+    if (!id || adding) return;
+    adding = true;
+    const btn = document.getElementById('btn-confirm-add');
+    btn.textContent = 'Adding...';
+    btn.style.opacity = '0.6';
+    const ex = exercises.find(e => String(e.id) === String(id));
+    const rows = fetchLastSession(id);
+    sessionExercises.push({ exercise: ex, rows: [{ saved: false }], lastSets: rows, done: false });
+    closeModal();
+    renderContent();
+    adding = false;
+  });
+}
+
+function openModal() {
+  document.getElementById('select-group').value = '';
+  document.getElementById('select-exercise').innerHTML = '<option value="">Select...</option>';
+  document.getElementById('exercise-field').style.display = 'none';
+  document.getElementById('preview-section').style.display = 'none';
+  const btn = document.getElementById('btn-confirm-add');
+  btn.textContent = sessionExercises.length === 0 ? 'Start your workout' : 'Add to session';
+  btn.style.opacity = '1';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+fetchExercises();
+</script>
+</body>
+</html>
