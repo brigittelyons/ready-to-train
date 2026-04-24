@@ -1,6 +1,6 @@
 # Ready to Train?
 
-A minimal workout tracking app built for the gym. Select your primary lift, log your sets, and pivot to a different exercise if equipment is busy — all from your phone.
+A minimal workout tracking app that lets you build your workouts on the fly. Select your primary lift, log your sets, and pivot to a different exercise if equipment is busy — all from your phone.
 
 Built as a single HTML file. No app store, no account, no install. Your data lives in your own Google Sheet.
 
@@ -20,7 +20,7 @@ Built as a single HTML file. No app store, no account, no install. Your data liv
 
 ## Files
 
-- `gym-pivot.html` — the app
+- `index.html` — the app
 - `icon.png` — home screen icon (1024x1024)
 - `README.md` — this file
 
@@ -34,6 +34,8 @@ Create a new Google Sheet with two tabs:
 
 **Exercises tab**
 
+This is where you build your own exercise library. The app is only as useful as what you put here — so take a few minutes to add the lifts you actually do and the accessories you actually pair with them.
+
 | id | name | muscle_group | type | accessories |
 |---|---|---|---|---|
 | 1 | Deadlift | Hamstrings | primary | 3,4,5 |
@@ -42,10 +44,15 @@ Create a new Google Sheet with two tabs:
 | 4 | Step Ups | Hamstrings,Glutes | accessory | |
 | 5 | Bulgarian Split Squats | Hamstrings,Glutes | accessory | |
 
-- `id` — use `=ROW()-1` in cell A2 and drag down
-- `muscle_group` — comma-separated if the exercise targets multiple groups
-- `type` — either `primary` or `accessory` (lowercase, no spaces)
-- `accessories` — comma-separated list of exercise ids that pair well with this lift
+The rows above are just examples to show the format — replace them with your own lifts.
+
+- `id` — use `=ROW()-1` in cell A2 and drag down to auto-number rows
+- `name` — whatever you call the exercise
+- `muscle_group` — used to filter exercises in the app; comma-separate if it hits multiple groups (e.g. `Hamstrings,Glutes`)
+- `type` — `primary` for your main lifts, `accessory` for supplemental work (lowercase, no spaces)
+- `accessories` — the part that makes the app useful: after you log a primary lift, the app suggests accessories based on this field. Enter the ids of exercises that pair well with this lift, comma-separated. Leave blank if none.
+
+You can add, edit, or remove exercises at any time — changes show up in the app on next load, no redeployment needed.
 
 **Sessions tab**
 
@@ -139,7 +146,7 @@ Click **Deploy** and copy the URL it gives you.
 
 ### 3. Update the app
 
-Open `gym-pivot.html` in a text editor. Near the top of the `<script>` section, find this line:
+Open `index.html` in a text editor. Near the top of the `<script>` section, find this line:
 
 ```javascript
 const API = 'https://script.google.com/macros/s/YOUR_SCRIPT_URL/exec';
@@ -151,7 +158,7 @@ Replace it with your deployed Apps Script URL.
 
 ### 4. Host the app
 
-Go to [app.netlify.com](https://app.netlify.com), create a free account, click **Add new site → Deploy manually**, and drag your folder (containing `gym-pivot.html` and `icon.png`) onto the drop zone. You'll get a permanent URL.
+Push your files to a public GitHub repository, then go to **Settings → Pages**. Set the source to **Deploy from a branch**, select `main`, and click Save. GitHub will give you a URL at `yourusername.github.io/your-repo-name` within a minute or two.
 
 ---
 
@@ -197,7 +204,7 @@ Edit the Exercises tab in your Google Sheet at any time — add new lifts, muscl
 - Vanilla HTML, CSS, JavaScript
 - Google Sheets as the database
 - Google Apps Script as the API
-- Hosted on Netlify
+- Hosted on GitHub Pages
 
 ---
 
