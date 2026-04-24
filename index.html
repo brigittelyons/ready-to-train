@@ -590,7 +590,7 @@ function renderContent() {
           <div class="accessories-label">Suggested accessories</div>
           <div class="accessory-chips">`;
         available.forEach(acc => {
-          html += `<button class="accessory-chip" onclick="addAccessory(${acc.id})">${acc.name}</button>`;
+          html += `<button class="accessory-chip" id="chip-${acc.id}" onclick="addAccessory(${acc.id}, this)">${acc.name}</button>`;
         });
         html += `</div></div>`;
       }
@@ -658,12 +658,16 @@ function removeLift(idx) {
 }
 
 let addingAccessory = false;
-async function addAccessory(exerciseId) {
+async function addAccessory(exerciseId, chipBtn) {
   if (addingAccessory) return;
   addingAccessory = true;
+  if (chipBtn) {
+    chipBtn.textContent = 'Adding...';
+    chipBtn.style.opacity = '0.5';
+    chipBtn.disabled = true;
+  }
   const ex = exercises.find(e => String(e.id) === String(exerciseId));
   if (!ex) { addingAccessory = false; return; }
-  // Add card immediately with loading state, then fill in history when ready
   const idx = sessionExercises.length;
   sessionExercises.push({ exercise: ex, rows: [{ saved: false }], lastSets: null, loading: true, done: false });
   renderContent();
