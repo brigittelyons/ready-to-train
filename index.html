@@ -480,7 +480,9 @@ function buildCardHTML(entry, idx) {
       ${!isDone ? `<button onclick="removeLift(${idx})" style="background:none;border:none;color:var(--ink3);font-size:18px;cursor:pointer;padding:0 0 0 8px;line-height:1;">×</button>` : ''}
     </div>`;
 
-  if (entry.lastSets && entry.lastSets.length > 0) {
+  if (entry.loading) {
+    html += `<div class="last-session-ref" style="color:var(--ink3);font-size:13px;padding: 8px 16px;">Loading last session...</div>`;
+  } else if (entry.lastSets && entry.lastSets.length > 0) {
     const grouped = groupBySession(entry.lastSets);
     const lastDate = grouped[0].date;
     html += `<div class="last-session-ref">
@@ -631,9 +633,14 @@ async function addAccessory(exerciseId) {
   addingAccessory = true;
   const ex = exercises.find(e => String(e.id) === String(exerciseId));
   if (!ex) { addingAccessory = false; return; }
-  const lastSets = await fetchLastSession(exerciseId);
-  sessionExercises.push({ exercise: ex, rows: [{ saved: false }], lastSets, done: false });
+  // Add card immediately with loading state, then fill in history when ready
+  const idx = sessionExercises.length;
+  sessionExercises.push({ exercise: ex, rows: [{ saved: false }], lastSets: null, loading: true, done: false });
   renderContent();
+  const lastSets = await fetchLastSession(exerciseId);
+  sessionExercises[idx].lastSets = lastSets;
+  sessionExercises[idx].loading = false;
+  renderCard(idx);
   addingAccessory = false;
 }
 
