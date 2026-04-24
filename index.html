@@ -423,44 +423,74 @@ async function fetchExercises() {
     const exRes = await fetch(`${API}?action=getExercises&token=${TOKEN}`);
     exercises = await exRes.json();
     init();
+    // Prefetch primary exercises in the background so history is ready when you tap
+    const primaryIds = exercises.filter(e => e.type === 'primary').map(e => e.id);
+    prefetchExercises(primaryIds);
   } catch(e) {
     document.getElementById('content').innerHTML = '<div class="error-msg">Could not load. Check your connection and refresh.</div>';
   }
 }
 
 const sessionCache = {};
+const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
 
-async function fetchLastSession(exerciseId) {
+function readCache(key) {
+  try {
+    const raw = localStorage.getItem('rtl_session_' + key);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) return null;
+    return data;
+  } catch(e) { return null; }
+}
+
+function writeCache(key, data) {
+  try {
+    localStorage.setItem('rtl_session_' + key, JSON.stringify({ data, ts: Date.now() }));
+  } catch(e) {}
+}
+
+async function fetchLastSession(exerciseId, { background = false } = {}) {
   const key = String(exerciseId);
   if (sessionCache[key] !== undefined) return sessionCache[key];
+  const cached = readCache(key);
+  if (cached !== null) {
+    sessionCache[key] = cached;
+    if (!background) {
+      fetch(`${API}?action=getSessions&exerciseId=${key}&token=${TOKEN}`)
+        .then(r => r.json())
+        .then(data => { sessionCache[key] = data; writeCache(key, data); })
+        .catch(() => {});
+    }
+    return cached;
+  }
   try {
     const res = await fetch(`${API}?action=getSessions&exerciseId=${key}&token=${TOKEN}`);
     sessionCache[key] = await res.json();
+    writeCache(key, sessionCache[key]);
   } catch(e) {
     sessionCache[key] = [];
   }
   return sessionCache[key];
 }
 
-async function logSet(exerciseId, exerciseName, setNumber, weight, reps) {
-  try {
-    await fetch(API, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'logSet',
-        token: TOKEN,
-        date: todayISO(),
-        session_id: sessionId,
-        exercise_id: exerciseId,
-        exercise_name: exerciseName,
-        set_number: setNumber,
-        weight_lbs: weight,
-        reps: reps
-      })
-    });
-  } catch(e) {
-    showToast('Failed to save set');
-  }
+function prefetchExercises(ids) {
+  ids.forEach(id => {
+    const key = String(id);
+    if (sessionCache[key] !== undefined) return;
+    fetchLastSession(key, { background: true }).catch(() => {});
+  });
+}
+
+async function logSets(sets) {
+  await fetch(API, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'logSets',
+      token: TOKEN,
+      sets
+    })
+  });
 }
 
 function init() {
@@ -661,13 +691,26 @@ async function finishSession() {
     });
   });
   showToast('Saving...');
-  let setCounter = 1;
+  const sets = [];
   for (const entry of sessionExercises) {
     const savedRows = entry.rows.filter(r => r.saved);
-    for (let i = 0; i < savedRows.length; i++) {
-      const r = savedRows[i];
-      await logSet(entry.exercise.id, entry.exercise.name, i + 1, r.weight, r.reps);
-    }
+    savedRows.forEach((r, i) => {
+      sets.push({
+        date: todayISO(),
+        session_id: sessionId,
+        exercise_id: entry.exercise.id,
+        exercise_name: entry.exercise.name,
+        set_number: i + 1,
+        weight_lbs: r.weight,
+        reps: r.reps
+      });
+    });
+  }
+  try {
+    await logSets(sets);
+  } catch(e) {
+    showToast('Failed to save session');
+    return;
   }
   sessionExercises.forEach(e => e.done = true);
   renderContent();
