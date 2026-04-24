@@ -404,6 +404,7 @@
 
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbyiGFkJ9p1RAapuPK_FT_-ownF6qUDSmnCPlj9MfrW6N_X2OZPQL4h6G048Ut4e8ki9/exec';
+const TOKEN = 'rtl-2026-gympivot';
 
 let exercises = [];
 let sessionId = 'S' + Date.now();
@@ -419,28 +420,26 @@ function todayISO() {
 
 async function fetchExercises() {
   try {
-    const exRes = await fetch(`${API}?action=getExercises`);
+    const exRes = await fetch(`${API}?action=getExercises&token=${TOKEN}`);
     exercises = await exRes.json();
     init();
-    loadAllSessions();
   } catch(e) {
     document.getElementById('content').innerHTML = '<div class="error-msg">Could not load. Check your connection and refresh.</div>';
   }
 }
 
-let allSessions = [];
+const sessionCache = {};
 
-async function loadAllSessions() {
+async function fetchLastSession(exerciseId) {
+  const key = String(exerciseId);
+  if (sessionCache[key] !== undefined) return sessionCache[key];
   try {
-    const res = await fetch(`${API}?action=getSessions`);
-    allSessions = await res.json();
+    const res = await fetch(`${API}?action=getSessions&exerciseId=${key}&token=${TOKEN}`);
+    sessionCache[key] = await res.json();
   } catch(e) {
-    allSessions = [];
+    sessionCache[key] = [];
   }
-}
-
-function fetchLastSession(exerciseId) {
-  return allSessions.filter(s => String(s.exercise_id) === String(exerciseId));
+  return sessionCache[key];
 }
 
 async function logSet(exerciseId, exerciseName, setNumber, weight, reps) {
@@ -449,6 +448,7 @@ async function logSet(exerciseId, exerciseName, setNumber, weight, reps) {
       method: 'POST',
       body: JSON.stringify({
         action: 'logSet',
+        token: TOKEN,
         date: todayISO(),
         session_id: sessionId,
         exercise_id: exerciseId,
@@ -472,6 +472,64 @@ function init() {
   setupModal();
 }
 
+function buildCardHTML(entry, idx) {
+  const isDone = entry.done;
+  let html = `<div class="exercise-card" id="card-${idx}">
+    <div class="exercise-card-header">
+      <div class="exercise-name"><span style="border-bottom: 2px solid var(--gold); padding-bottom: 2px;">${entry.exercise.name}</span></div>
+      ${!isDone ? `<button onclick="removeLift(${idx})" style="background:none;border:none;color:var(--ink3);font-size:18px;cursor:pointer;padding:0 0 0 8px;line-height:1;">×</button>` : ''}
+    </div>`;
+
+  if (entry.lastSets && entry.lastSets.length > 0) {
+    const grouped = groupBySession(entry.lastSets);
+    const lastDate = grouped[0].date;
+    html += `<div class="last-session-ref">
+      <div class="last-session-label" style="color: var(--ink3)">Last session · ${formatDate(lastDate)}</div>
+      <div class="last-session-sets">${grouped[0].sets.map(s => `${s.weight_lbs || s.weight_kg ? (s.weight_lbs || s.weight_kg) + ' lbs' : 'bodyweight'} · ${s.reps} reps`).join('<br>')}</div>
+    </div>`;
+  }
+
+  if (entry.rows.length > 0) {
+    html += `<div class="sets-logged">`;
+    entry.rows.forEach((r, ri) => {
+      const savedNum = entry.rows.slice(0, ri).filter(x => x.saved).length + 1;
+      if (r.saved) {
+        html += `<div class="set-row">
+          <div class="set-num">S${savedNum}</div>
+          <div class="set-val">${r.weight != null ? r.weight + ' lbs' : 'bodyweight'}</div>
+          <div class="set-val">${r.reps} reps</div>
+          <button class="set-delete" onclick="deleteRow(${idx},${ri})" aria-label="Remove set">×</button>
+        </div>`;
+      } else {
+        html += `<div class="set-row">
+          <div class="set-num" style="color:var(--ink3)">S${entry.rows.filter(x=>x.saved).length+1}</div>
+          <input type="number" inputmode="decimal" placeholder="lbs" id="kg-${idx}-${ri}" step="0.5" style="flex:1;min-width:0;border:1px solid var(--rule);border-radius:var(--radius-sm);padding:8px 10px;font-size:14px;font-family:Inter,sans-serif;color:var(--ink);background:var(--bg);outline:none;-webkit-appearance:none;">
+          <input type="number" inputmode="numeric" placeholder="reps" id="reps-${idx}-${ri}" style="flex:1;min-width:0;border:1px solid var(--rule);border-radius:var(--radius-sm);padding:8px 10px;font-size:14px;font-family:Inter,sans-serif;color:var(--ink);background:var(--bg);outline:none;-webkit-appearance:none;">
+          <button class="set-delete" onclick="deleteRow(${idx},${ri})" aria-label="Remove row">×</button>
+        </div>`;
+      }
+    });
+    html += `</div>`;
+  }
+
+  if (!isDone) {
+    html += `<div style="padding: 8px 16px 12px;">
+      <button onclick="addRow(${idx})" style="width:100%;background:transparent;color:var(--ink2);border:1px solid var(--rule);border-radius:var(--radius-sm);padding:11px;font-size:14px;font-family:Inter,sans-serif;cursor:pointer;">+ Add set</button>
+    </div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function renderCard(idx) {
+  const card = document.getElementById(`card-${idx}`);
+  if (!card) { renderContent(); return; }
+  const tmp = document.createElement('div');
+  tmp.innerHTML = buildCardHTML(sessionExercises[idx], idx);
+  card.replaceWith(tmp.firstElementChild);
+}
+
 function renderContent() {
   const content = document.getElementById('content');
   if (sessionExercises.length === 0) {
@@ -485,52 +543,7 @@ function renderContent() {
 
   let html = '';
   sessionExercises.forEach((entry, idx) => {
-    const isDone = entry.done;
-    html += `<div class="exercise-card" id="card-${idx}">
-      <div class="exercise-card-header">
-        <div class="exercise-name"><span style="border-bottom: 2px solid var(--gold); padding-bottom: 2px;">${entry.exercise.name}</span></div>
-        ${!isDone ? `<button onclick="removeLift(${idx})" style="background:none;border:none;color:var(--ink3);font-size:18px;cursor:pointer;padding:0 0 0 8px;line-height:1;">×</button>` : ''}
-      </div>`;
-
-    if (entry.lastSets && entry.lastSets.length > 0) {
-      const grouped = groupBySession(entry.lastSets);
-      const lastDate = grouped[0].date;
-      html += `<div class="last-session-ref">
-        <div class="last-session-label" style="color: var(--ink3)">Last session · ${formatDate(lastDate)}</div>
-        <div class="last-session-sets">${grouped[0].sets.map(s => `${s.weight_lbs || s.weight_kg ? (s.weight_lbs || s.weight_kg) + ' lbs' : 'bodyweight'} · ${s.reps} reps`).join('<br>')}</div>
-      </div>`;
-    }
-
-    if (entry.rows.length > 0) {
-      html += `<div class="sets-logged">`;
-      entry.rows.forEach((r, ri) => {
-        const savedNum = entry.rows.slice(0, ri).filter(x => x.saved).length + 1;
-        if (r.saved) {
-          html += `<div class="set-row">
-            <div class="set-num">S${savedNum}</div>
-            <div class="set-val">${r.weight != null ? r.weight + ' lbs' : 'bodyweight'}</div>
-            <div class="set-val">${r.reps} reps</div>
-            <button class="set-delete" onclick="deleteRow(${idx},${ri})" aria-label="Remove set">×</button>
-          </div>`;
-        } else {
-          html += `<div class="set-row">
-            <div class="set-num" style="color:var(--ink3)">S${entry.rows.filter(x=>x.saved).length+1}</div>
-            <input type="number" inputmode="decimal" placeholder="lbs" id="kg-${idx}-${ri}" step="0.5" style="flex:1;min-width:0;border:1px solid var(--rule);border-radius:var(--radius-sm);padding:8px 10px;font-size:14px;font-family:Inter,sans-serif;color:var(--ink);background:var(--bg);outline:none;-webkit-appearance:none;">
-            <input type="number" inputmode="numeric" placeholder="reps" id="reps-${idx}-${ri}" style="flex:1;min-width:0;border:1px solid var(--rule);border-radius:var(--radius-sm);padding:8px 10px;font-size:14px;font-family:Inter,sans-serif;color:var(--ink);background:var(--bg);outline:none;-webkit-appearance:none;">
-            <button class="set-delete" onclick="deleteRow(${idx},${ri})" aria-label="Remove row">×</button>
-          </div>`;
-        }
-      });
-      html += `</div>`;
-    }
-
-    if (!isDone) {
-      html += `<div style="padding: 8px 16px 12px;">
-        <button onclick="addRow(${idx})" style="width:100%;background:transparent;color:var(--ink2);border:1px solid var(--rule);border-radius:var(--radius-sm);padding:11px;font-size:14px;font-family:Inter,sans-serif;cursor:pointer;">+ Add set</button>
-      </div>`;
-    }
-
-    html += `</div>`;
+    html += buildCardHTML(entry, idx);
   });
 
   // Accessories
@@ -599,12 +612,12 @@ function addRow(idx) {
     }
   }
   entry.rows.push({ saved: false });
-  renderContent();
+  renderCard(idx);
 }
 
 function deleteRow(exerciseIdx, rowIdx) {
   sessionExercises[exerciseIdx].rows.splice(rowIdx, 1);
-  renderContent();
+  renderCard(exerciseIdx);
 }
 
 function removeLift(idx) {
@@ -618,7 +631,7 @@ async function addAccessory(exerciseId) {
   addingAccessory = true;
   const ex = exercises.find(e => String(e.id) === String(exerciseId));
   if (!ex) { addingAccessory = false; return; }
-  const lastSets = fetchLastSession(exerciseId);
+  const lastSets = await fetchLastSession(exerciseId);
   sessionExercises.push({ exercise: ex, rows: [{ saved: false }], lastSets, done: false });
   renderContent();
   addingAccessory = false;
@@ -702,7 +715,7 @@ function setupModal() {
     if (!id) { document.getElementById('preview-section').style.display = 'none'; return; }
     document.getElementById('preview-section').style.display = 'block';
     document.getElementById('preview-content').textContent = 'Loading...';
-    const rows = fetchLastSession(id);
+    const rows = await fetchLastSession(id);
     const previewEl = document.getElementById('preview-content');
     if (!rows || rows.length === 0) {
       previewEl.textContent = 'No previous sessions.';
@@ -722,7 +735,7 @@ function setupModal() {
     btn.textContent = 'Adding...';
     btn.style.opacity = '0.6';
     const ex = exercises.find(e => String(e.id) === String(id));
-    const rows = fetchLastSession(id);
+    const rows = await fetchLastSession(id);
     sessionExercises.push({ exercise: ex, rows: [{ saved: false }], lastSets: rows, done: false });
     closeModal();
     renderContent();
