@@ -2,18 +2,20 @@
 
 A minimal workout tracking app that lets you build your workouts on the fly. Select your primary lift, log your sets, and pivot to a different exercise if equipment is busy — all from your phone.
 
-Built as a single HTML file. No app store, no account, no install. Your data lives in your own Google Sheet.
+Built as a single HTML file. No app store, no account, no install. Your data lives in your own Supabase database.
 
 ---
 
 ## Features
 
-- Pick a primary lift by muscle group, or browse all exercises at once
+- Pick a primary lift by movement pattern, or browse all exercises at once
 - See your last session stats before you start
 - Log sets with weight and reps (or just reps for bodyweight exercises)
-- Suggested accessories after each lift
+- Automatically suggested accessories based on antagonist movement patterns
+- Always includes a stability exercise in the suggestions
+- Tip to add a second primary lift for a balanced session
 - Add as many lifts as you need in one session
-- Everything saves to your Google Sheet when you finish
+- Everything saves to your Supabase database when you finish
 - Works on any phone browser — add to home screen for a native app feel
 
 ---
@@ -28,141 +30,92 @@ Built as a single HTML file. No app store, no account, no install. Your data liv
 
 ## Setup
 
-### 1. Create your Google Sheet
+### 1. Create a Supabase project
 
-Create a new Google Sheet with two tabs:
+Go to [supabase.com](https://supabase.com) and create a free account and a new project.
 
-**Exercises tab**
+---
 
-This is where you build your own exercise library. The app is only as useful as what you put here — so take a few minutes to add the lifts you actually do and the accessories you actually pair with them.
+### 2. Create your tables
 
-| id | name | muscle_group | type | accessories |
-|---|---|---|---|---|
-| 1 | Deadlift | Hamstrings | primary | 3,4,5 |
-| 2 | Hip Thrusts | Hamstrings,Glutes | primary | 3,4,5 |
-| 3 | Good Mornings | Hamstrings | accessory | |
-| 4 | Step Ups | Hamstrings,Glutes | accessory | |
-| 5 | Bulgarian Split Squats | Hamstrings,Glutes | accessory | |
+In the **Table Editor**, create two tables: **Exercises** and **Sessions**.
 
-The rows above are just examples to show the format — replace them with your own lifts.
+**Exercises table**
 
-- `id` — use `=ROW()-1` in cell A2 and drag down to auto-number rows
+This is where you build your own exercise library. The app is only as useful as what you put here — so take a few minutes to add the lifts you actually do.
+
+| id | name | movement | type |
+|---|---|---|---|
+| 1 | Deadlift | Hinge | primary |
+| 2 | Hip Thrusts | Hinge | primary |
+| 3 | Good Mornings | Hinge | accessory |
+| 4 | Step Ups | Squat | accessory |
+| 5 | Bulgarian Split Squats | Squat | accessory |
+| 6 | Farmer's Carry | Stability | accessory |
+
+The rows above are just examples — replace them with your own lifts.
+
+- `id` — unique number for each exercise
 - `name` — whatever you call the exercise
-- `muscle_group` — used to filter exercises in the app; comma-separate if it hits multiple groups (e.g. `Hamstrings,Glutes`)
+- `movement` — used to filter exercises and generate accessory suggestions. Use: `Hinge`, `Squat`, `Push`, `Pull`, or `Stability`
 - `type` — `primary` for your main lifts, `accessory` for supplemental work (lowercase, no spaces)
-- `accessories` — the part that makes the app useful: after you log a primary lift, the app suggests accessories based on this field. Enter the ids of exercises that pair well with this lift, comma-separated. Leave blank if none.
 
-You can add, edit, or remove exercises at any time — changes show up in the app on next load, no redeployment needed.
+**How accessories work:** the app automatically suggests accessories based on antagonist movement patterns — no manual tagging needed. After a Hinge primary, it suggests Squat accessories. After a Push, it suggests Pull accessories. It always includes one Stability exercise. The more exercises you add with the right `movement` and `type`, the better the suggestions.
 
-**Sessions tab**
+You can add, edit, or remove exercises at any time directly in the Supabase table editor — changes appear in the app on next load.
+
+**Sessions table**
 
 | id | date | session_id | exercise_id | exercise_name | set_number | weight_lbs | reps |
 |---|---|---|---|---|---|---|---|
 
-Leave this empty — the app writes to it automatically when you finish a session.
+Leave this empty — the app writes to it automatically when you finish a session. Make sure the `date` column is set to type `date`.
 
 ---
 
-### 2. Add the Apps Script
+### 3. Set up Row Level Security
 
-In your Google Sheet, go to **Extensions → Apps Script**. Delete any existing code and paste in the following:
+In **Authentication → Policies**, enable RLS on both tables and add the following policies:
+
+**Exercises table**
+- SELECT — enable read access for all users
+
+**Sessions table**
+- SELECT — enable read access for all users
+- INSERT — enable insert access for all users (set `with check` to `true`)
+
+---
+
+### 4. Enable the Data API
+
+Go to **Settings → Integrations → Data API** and make sure both tables are exposed.
+
+---
+
+### 5. Get your API credentials
+
+Go to **Settings → API** and copy:
+- **Project URL** — `https://yourproject.supabase.co`
+- **Publishable key** — starts with `sb_publishable_`
+
+Open `index.html` in a text editor and find these lines near the top of the `<script>` section:
 
 ```javascript
-const SHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
-
-function doGet(e) {
-  const action = e.parameter.action;
-  if (action === 'getExercises') return getExercises();
-  if (action === 'getSessions') return getSessions(e.parameter.exerciseId);
-  return response({ error: 'Unknown action' });
-}
-
-function doPost(e) {
-  const data = JSON.parse(e.postData.contents);
-  if (data.action === 'logSet') return logSet(data);
-  return response({ error: 'Unknown action' });
-}
-
-function getExercises() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Exercises');
-  const rows = sheet.getDataRange().getValues();
-  const headers = rows[0];
-  const exercises = rows.slice(1).map(row => {
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = row[i]);
-    return obj;
-  });
-  return response(exercises);
-}
-
-function getSessions(exerciseId) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sessions');
-  const rows = sheet.getDataRange().getValues();
-  if (rows.length <= 1) return response([]);
-  const headers = rows[0];
-  let sessions = rows.slice(1).map(row => {
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = row[i]);
-    return obj;
-  });
-  if (exerciseId) {
-    sessions = sessions.filter(row => String(row.exercise_id) === String(exerciseId));
-  }
-  return response(sessions);
-}
-
-function logSet(data) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sessions');
-  const lastRow = sheet.getLastRow();
-  const newId = lastRow;
-  sheet.appendRow([
-    newId,
-    data.date,
-    data.session_id,
-    data.exercise_id,
-    data.exercise_name,
-    data.set_number,
-    data.weight_lbs,
-    data.reps
-  ]);
-  return response({ success: true });
-}
-
-function response(data) {
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+const SUPABASE_URL = 'https://yourproject.supabase.co';
+const SUPABASE_KEY = 'your-publishable-key';
 ```
 
-Click **Save**, then **Deploy → New deployment**. Set:
-- Type → **Web app**
-- Execute as → **Me**
-- Who has access → **Anyone**
-
-Click **Deploy** and copy the URL it gives you.
+Replace with your project URL and publishable key.
 
 ---
 
-### 3. Update the app
-
-Open `index.html` in a text editor. Near the top of the `<script>` section, find this line:
-
-```javascript
-const API = 'https://script.google.com/macros/s/YOUR_SCRIPT_URL/exec';
-```
-
-Replace it with your deployed Apps Script URL.
-
----
-
-### 4. Host the app
+### 6. Host the app
 
 Push your files to a public GitHub repository, then go to **Settings → Pages**. Set the source to **Deploy from a branch**, select `main`, and click Save. GitHub will give you a URL at `yourusername.github.io/your-repo-name` within a minute or two.
 
 ---
 
-### 5. Add to your phone's home screen
+### 7. Add to your phone's home screen
 
 - **iPhone**: Open the URL in **Safari** → tap the share button → **Add to Home Screen** → name it "Ready to Train?"
 - **Android**: Open in Chrome → three dots → **Add to Home Screen**
@@ -173,20 +126,19 @@ It will open full screen like a native app with the dumbbell icon.
 
 ## Adding past sessions
 
-You can add historical workout data directly to the Sessions tab in your Google Sheet:
+You can add historical workout data directly in the Supabase Sessions table editor:
 
 - All sets from the same gym visit should share the same `session_id` (e.g. `S20260421`)
-- `exercise_id` must match the id in your Exercises tab exactly
+- `exercise_id` must match the id in your Exercises table exactly
 - `weight_lbs` can be left blank for bodyweight exercises
-- Dates should be entered and formatted via Format → Number → Date in Google Sheets
+- `date` should be in `YYYY-MM-DD` format (e.g. `2026-04-21`)
 - The app shows the most recent session per exercise based on date — make sure dates are accurate
-- New rows are appended to the bottom — enter past sessions in chronological order
 
 ---
 
 ## Customizing your exercises
 
-Edit the Exercises tab in your Google Sheet at any time — add new lifts, muscle groups, or accessory relationships. Changes appear in the app on next load. No redeployment needed.
+Edit the Exercises table in Supabase at any time — add new lifts, change movement categories, or update types. Changes appear in the app on next load. No redeployment needed.
 
 ---
 
@@ -202,8 +154,7 @@ Edit the Exercises tab in your Google Sheet at any time — add new lifts, muscl
 ## Built with
 
 - Vanilla HTML, CSS, JavaScript
-- Google Sheets as the database
-- Google Apps Script as the API
+- Supabase as the database and API
 - Hosted on GitHub Pages
 
 ---
