@@ -351,12 +351,96 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .error-msg { padding: 20px; text-align: center; color: #c0392b; font-size: 13px; }
+
+  /* Recent sessions panel */
+  .recent-sessions {
+    padding: 4px 16px 16px;
+  }
+  .recent-sessions-label {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: 8px;
+  }
+  .recent-session-card {
+    border-radius: var(--radius-sm);
+    padding: 11px 13px;
+    background: var(--bg2);
+    border: 1px solid var(--rule);
+    margin-bottom: 6px;
+  }
+  .recent-session-card:last-child { margin-bottom: 0; }
+  .recent-session-date {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--ink3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 5px;
+  }
+  .recent-session-exercises {
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.8;
+  }
+
+  /* History sheet */
+  .history-sheet-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 100;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .history-sheet-overlay.open { display: flex; }
+  .history-sheet {
+    width: 100%;
+    max-width: 430px;
+    background: var(--bg);
+    border-radius: 20px 20px 0 0;
+    padding: 0 0 40px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .history-sheet-header {
+    padding: 16px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--rule);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+  }
+  .history-sheet-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .history-sheet-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: var(--ink3);
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+  }
+  .history-sheet-body {
+    padding: 12px 16px 0;
+  }
 </style>
 </head>
 <body>
 <div class="app">
   <div class="header">
-    <div class="session-date" id="session-date"></div>
+    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+      <div class="session-date" id="session-date"></div>
+      <button id="btn-history" onclick="openHistory()" style="display:none; background:none; border:none; font-size:13px; color:var(--periwinkle); cursor:pointer; font-family:Inter,sans-serif; padding:0;">History</button>
+    </div>
   </div>
 
   <div class="content" id="content">
@@ -402,6 +486,19 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+<!-- History Sheet -->
+<div class="history-sheet-overlay" id="history-sheet-overlay">
+  <div class="history-sheet">
+    <div class="history-sheet-header">
+      <div class="history-sheet-title">Recent sessions</div>
+      <button class="history-sheet-close" onclick="closeHistory()">×</button>
+    </div>
+    <div class="history-sheet-body" id="history-sheet-body">
+      <div class="loading"><div class="spinner"></div> Loading...</div>
+    </div>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL = 'https://mhninjvapafevgznvtnb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_FzgkyWLx4_1L9laNTL2wpA_1nQWXBNW';
@@ -411,6 +508,7 @@ let exercises = [];
 let sessionId = 'S' + Date.now();
 let sessionExercises = []; // { exercise, sets: [{weight, reps}] }
 let sessionStarted = false;
+let recentSessions = null; // cached recent sessions for home screen + history sheet
 
 function today() {
   return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -490,6 +588,78 @@ async function logSets(sets) {
   });
 }
 
+async function fetchRecentSessions() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/Sessions?select=date,session_id,exercise_name&order=date.desc&limit=150`,
+      { headers: SB_HEADERS }
+    );
+    const rows = await res.json();
+    // Group by session_id, preserve order (already date desc)
+    const map = {};
+    const order = [];
+    rows.forEach(r => {
+      if (!map[r.session_id]) {
+        map[r.session_id] = { date: r.date, exercises: [] };
+        order.push(r.session_id);
+      }
+      if (!map[r.session_id].exercises.includes(r.exercise_name)) {
+        map[r.session_id].exercises.push(r.exercise_name);
+      }
+    });
+    recentSessions = order.slice(0, 3).map(id => map[id]);
+    return recentSessions;
+  } catch(e) {
+    recentSessions = [];
+    return [];
+  }
+}
+
+function buildRecentSessionsHTML(sessions) {
+  if (!sessions || sessions.length === 0) return '';
+  let html = `<div class="recent-sessions">
+    <div class="recent-sessions-label">Recent sessions</div>`;
+  sessions.forEach(s => {
+    html += `<div class="recent-session-card">
+      <div class="recent-session-date">${formatDate(s.date)}</div>
+      <div class="recent-session-exercises">${s.exercises.join(' · ')}</div>
+    </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function openHistory() {
+  const overlay = document.getElementById('history-sheet-overlay');
+  const body = document.getElementById('history-sheet-body');
+  overlay.classList.add('open');
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeHistory(); }, { once: true });
+  if (recentSessions && recentSessions.length > 0) {
+    body.innerHTML = buildRecentSessionsHTML(recentSessions).replace('class="recent-sessions"', 'style="padding:0;"').replace('class="recent-sessions-label"', 'style="display:none;"');
+    // simpler: just re-render the cards directly
+    body.innerHTML = '';
+    recentSessions.forEach(s => {
+      const card = document.createElement('div');
+      card.className = 'recent-session-card';
+      card.innerHTML = `<div class="recent-session-date">${formatDate(s.date)}</div>
+        <div class="recent-session-exercises">${s.exercises.join(' · ')}</div>`;
+      body.appendChild(card);
+    });
+  } else {
+    body.innerHTML = '<div style="padding:16px 0; font-size:13px; color:var(--ink3);">No previous sessions found.</div>';
+    // try fetching if not yet loaded
+    if (recentSessions === null) {
+      body.innerHTML = '<div class="loading"><div class="spinner"></div> Loading...</div>';
+      fetchRecentSessions().then(() => openHistory());
+      closeHistory();
+    }
+  }
+}
+
+function closeHistory() {
+  document.getElementById('history-sheet-overlay').classList.remove('open');
+}
+
 function init() {
   document.getElementById('session-date').textContent = today();
   renderContent();
@@ -497,6 +667,10 @@ function init() {
   document.getElementById('btn-add-lift').addEventListener('click', openModal);
   document.getElementById('btn-finish').addEventListener('click', finishSession);
   setupModal();
+  // Fetch recent sessions in background for home screen panel + history sheet
+  fetchRecentSessions().then(() => {
+    if (sessionExercises.length === 0) renderContent();
+  });
 }
 
 function buildCardHTML(entry, idx) {
@@ -591,14 +765,31 @@ function getTip() {
 
 function renderContent() {
   const content = document.getElementById('content');
+  const historyBtn = document.getElementById('btn-history');
+
   if (sessionExercises.length === 0) {
-    content.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-title">Ready to train?</div>
-        <div class="empty-state-sub">Tap "Start session" to begin.<br>You can add as many lifts as you need.</div>
+    // Show History button only when session is active
+    if (historyBtn) historyBtn.style.display = 'none';
+
+    let emptyHTML = `<div style="padding: 20px 18px 24px;">
+      <div class="empty-state-title">Ready to train?</div>
+    </div>`;
+
+    if (recentSessions && recentSessions.length > 0) {
+      emptyHTML += buildRecentSessionsHTML(recentSessions);
+    } else if (recentSessions === null) {
+      emptyHTML += `<div style="padding: 16px 16px 0;">
+        <div class="recent-sessions-label">Recent sessions</div>
+        <div style="font-size:13px; color:var(--ink3);">Loading...</div>
       </div>`;
+    }
+
+    content.innerHTML = emptyHTML;
     return;
   }
+
+  // Session in progress — show History button
+  if (historyBtn) historyBtn.style.display = 'block';
 
   let html = '';
   sessionExercises.forEach((entry, idx) => {
@@ -669,10 +860,12 @@ function formatDate(iso) {
   if (typeof iso === 'number') {
     d = new Date(Math.round((iso - 25569) * 86400 * 1000));
   } else {
-    d = new Date(String(iso));
+    // Append T00:00:00 (no Z) so JS treats it as local time, not UTC midnight
+    const s = String(iso);
+    d = new Date(s.length === 10 ? s + 'T00:00:00' : s);
   }
   if (isNaN(d)) return String(iso);
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' });
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
 
