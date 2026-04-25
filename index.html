@@ -56,7 +56,6 @@
     z-index: 10;
   }
   .header-top { display: flex; justify-content: space-between; align-items: baseline; }
-  .wordmark { font-family: 'Inter', sans-serif; font-size: 26px; color: var(--ink); letter-spacing: -0.02em; }
   .session-date { font-size: 14px; font-weight: 400; color: var(--plum); }
 
   /* Main content */
@@ -586,6 +585,7 @@ async function logSets(sets) {
     headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
     body: JSON.stringify(sets)
   });
+   if (!res.ok) throw new Error(`Failed to log sets: ${res.status}`);
 }
 
 async function fetchRecentSessions() {
@@ -635,8 +635,6 @@ function openHistory() {
   overlay.classList.add('open');
   overlay.addEventListener('click', e => { if (e.target === overlay) closeHistory(); }, { once: true });
   if (recentSessions && recentSessions.length > 0) {
-    body.innerHTML = buildRecentSessionsHTML(recentSessions).replace('class="recent-sessions"', 'style="padding:0;"').replace('class="recent-sessions-label"', 'style="display:none;"');
-    // simpler: just re-render the cards directly
     body.innerHTML = '';
     recentSessions.forEach(s => {
       const card = document.createElement('div');
@@ -973,9 +971,11 @@ function setupModal() {
 
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
 
-  const groups = ['All lifts', ...[...new Set(
-    exercises.flatMap(e => String(e.movement || '').split(',').map(g => g.trim()))
-  )].sort()];
+ const groups = ['All lifts', ...[...new Set(
+  exercises
+    .filter(e => String(e.type).trim().toLowerCase() === 'primary')
+    .flatMap(e => String(e.movement || '').split(',').map(g => g.trim()))
+)].sort()];
 
   groups.forEach(g => {
     const opt = document.createElement('option');
