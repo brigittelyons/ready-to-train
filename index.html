@@ -563,6 +563,13 @@ function renderCard(idx) {
 }
 
 const ANTAGONIST = {
+  'Hinge': 'Squat',
+  'Squat': 'Hinge',
+  'Push': 'Pull',
+  'Pull': 'Push'
+};
+
+const SESSION_PAIR = {
   'Hinge': 'Pull',
   'Pull': 'Hinge',
   'Squat': 'Push',
@@ -575,15 +582,15 @@ function getTip() {
   if (primaries.length === 0) return null; // no primaries yet
   const lastPrimary = primaries[primaries.length - 1];
   const movement = String(lastPrimary.exercise.movement || '').trim();
-  const antagonist = ANTAGONIST[movement];
-  if (!antagonist) return null;
-  // Check if antagonist movement already in session
-  const hasAntagonist = sessionExercises.some(e =>
-    String(e.exercise.movement || '').trim() === antagonist &&
+  const pair = SESSION_PAIR[movement];
+  if (!pair) return null;
+  // Check if paired movement already in session
+  const hasPair = sessionExercises.some(e =>
+    String(e.exercise.movement || '').trim() === pair &&
     String(e.exercise.type).trim().toLowerCase() === 'primary'
   );
-  if (hasAntagonist) return null;
-  return `Consider adding a ${antagonist} movement to balance today's session`;
+  if (hasPair) return null;
+  return `Consider adding a ${pair} movement to balance today's session`;
 }
 
 function renderContent() {
