@@ -403,9 +403,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const SUPABASE_URL = 'https://mhninjvapafevgznvtnb.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_FzgkyWLx4_1L9laNTL2wpA_1nQWXBNW';
-const SB_HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+const API = 'https://script.google.com/macros/s/AKfycbyiGFkJ9p1RAapuPK_FT_-ownF6qUDSmnCPlj9MfrW6N_X2OZPQL4h6G048Ut4e8ki9/exec';
+const TOKEN = 'rtl-2026-gympivot';
 
 let exercises = [];
 let sessionId = 'S' + Date.now();
@@ -421,9 +420,10 @@ function todayISO() {
 
 async function fetchExercises() {
   try {
-    const exRes = await fetch(`${SUPABASE_URL}/rest/v1/Exercises?select=*&order=id.asc`, { headers: SB_HEADERS });
+    const exRes = await fetch(`${API}?action=getExercises&token=${TOKEN}`);
     exercises = await exRes.json();
     init();
+    // Prefetch primary exercises in the background so history is ready when you tap
     const primaryIds = exercises.filter(e => e.type === 'primary').map(e => e.id);
     prefetchExercises(primaryIds);
   } catch(e) {
@@ -457,7 +457,7 @@ async function fetchLastSession(exerciseId, { background = false } = {}) {
   if (cached !== null) {
     sessionCache[key] = cached;
     if (!background) {
-      fetch(`${SUPABASE_URL}/rest/v1/Sessions?select=*&exercise_id=eq.${key}&order=date.desc&limit=200`, { headers: SB_HEADERS })
+      fetch(`${API}?action=getSessions&exerciseId=${key}&token=${TOKEN}`)
         .then(r => r.json())
         .then(data => { sessionCache[key] = data; writeCache(key, data); })
         .catch(() => {});
@@ -465,7 +465,7 @@ async function fetchLastSession(exerciseId, { background = false } = {}) {
     return cached;
   }
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/Sessions?select=*&exercise_id=eq.${key}&order=date.desc&limit=200`, { headers: SB_HEADERS });
+    const res = await fetch(`${API}?action=getSessions&exerciseId=${key}&token=${TOKEN}`);
     sessionCache[key] = await res.json();
     writeCache(key, sessionCache[key]);
   } catch(e) {
@@ -483,10 +483,13 @@ function prefetchExercises(ids) {
 }
 
 async function logSets(sets) {
-  await fetch(`${SUPABASE_URL}/rest/v1/Sessions`, {
+  await fetch(API, {
     method: 'POST',
-    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-    body: JSON.stringify(sets)
+    body: JSON.stringify({
+      action: 'logSets',
+      token: TOKEN,
+      sets
+    })
   });
 }
 
@@ -559,6 +562,30 @@ function renderCard(idx) {
   card.replaceWith(tmp.firstElementChild);
 }
 
+const ANTAGONIST = {
+  'Hinge': 'Pull',
+  'Pull': 'Hinge',
+  'Squat': 'Push',
+  'Push': 'Squat'
+};
+
+function getTip() {
+  const primaries = sessionExercises.filter(e => String(e.exercise.type).trim().toLowerCase() === 'primary');
+  if (primaries.length >= 2) return null; // already have 2 primaries, no tip needed
+  if (primaries.length === 0) return null; // no primaries yet
+  const lastPrimary = primaries[primaries.length - 1];
+  const movement = String(lastPrimary.exercise.movement || '').trim();
+  const antagonist = ANTAGONIST[movement];
+  if (!antagonist) return null;
+  // Check if antagonist movement already in session
+  const hasAntagonist = sessionExercises.some(e =>
+    String(e.exercise.movement || '').trim() === antagonist &&
+    String(e.exercise.type).trim().toLowerCase() === 'primary'
+  );
+  if (hasAntagonist) return null;
+  return `Consider adding a ${antagonist} movement to balance today's session`;
+}
+
 function renderContent() {
   const content = document.getElementById('content');
   if (sessionExercises.length === 0) {
@@ -575,22 +602,51 @@ function renderContent() {
     html += buildCardHTML(entry, idx);
   });
 
-  // Accessories
+  // Balance tip
+  const tip = getTip();
+  if (tip) {
+    html += `<div style="margin: 12px 24px 0; padding: 12px 14px; background: var(--bg2); border-radius: var(--radius); border-left: 3px solid var(--gold);">
+      <div style="font-size: 13px; color: var(--ink2);">💡 ${tip}</div>
+    </div>`;
+  }
+
+  // Accessories — 3 random antagonist + 1 random Stability
   const lastEntry = sessionExercises[sessionExercises.length - 1];
   if (lastEntry) {
-    const accessories = getAccessories(lastEntry.exercise);
-    if (accessories.length > 0) {
-      const addedIds = sessionExercises.map(e => String(e.exercise.id));
-      const available = accessories.filter(acc => !addedIds.includes(String(acc.id)));
-      if (available.length > 0) {
-        html += `<div class="accessories-section">
-          <div class="accessories-label">Suggested accessories</div>
-          <div class="accessory-chips">`;
-        available.forEach(acc => {
-          html += `<button class="accessory-chip" id="chip-${acc.id}" onclick="addAccessory(${acc.id}, this)">${acc.name}</button>`;
-        });
-        html += `</div></div>`;
-      }
+    const movement = String(lastEntry.exercise.movement || '').trim();
+    const antagonist = ANTAGONIST[movement];
+    const addedIds = sessionExercises.map(e => String(e.exercise.id));
+
+    let suggestions = [];
+
+    if (antagonist) {
+      // 3 random antagonist accessories
+      const antagonistPool = exercises.filter(e =>
+        String(e.movement || '').trim() === antagonist &&
+        String(e.type || '').trim().toLowerCase() === 'accessory' &&
+        !addedIds.includes(String(e.id))
+      );
+      const antagonistPicks = antagonistPool.sort(() => Math.random() - 0.5).slice(0, 3);
+      suggestions = suggestions.concat(antagonistPicks);
+    }
+
+    // 1 random Stability accessory
+    const stabilityPool = exercises.filter(e =>
+      String(e.movement || '').trim() === 'Stability' &&
+      String(e.type || '').trim().toLowerCase() === 'accessory' &&
+      !addedIds.includes(String(e.id))
+    );
+    const stabilityPick = stabilityPool.sort(() => Math.random() - 0.5).slice(0, 1);
+    suggestions = suggestions.concat(stabilityPick);
+
+    if (suggestions.length > 0) {
+      html += `<div class="accessories-section">
+        <div class="accessories-label">Suggested accessories</div>
+        <div class="accessory-chips">`;
+      suggestions.forEach(acc => {
+        html += `<button class="accessory-chip" id="chip-${acc.id}" onclick="addAccessory(${acc.id}, this)">${acc.name}</button>`;
+      });
+      html += `</div></div>`;
     }
   }
 
@@ -621,10 +677,7 @@ function formatDate(iso) {
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' });
 }
 
-function getAccessories(exercise) {
-  const ids = String(exercise.accessories || '').split(',').map(s => s.trim()).filter(Boolean);
-  return exercises.filter(e => ids.includes(String(e.id)));
-}
+
 
 
 
