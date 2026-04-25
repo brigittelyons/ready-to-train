@@ -602,15 +602,7 @@ function renderContent() {
     html += buildCardHTML(entry, idx);
   });
 
-  // Balance tip
-  const tip = getTip();
-  if (tip) {
-    html += `<div style="margin: 12px 24px 0; padding: 12px 14px; background: var(--bg2); border-radius: var(--radius); border-left: 3px solid var(--gold);">
-      <div style="font-size: 13px; color: var(--ink2);">💡 ${tip}</div>
-    </div>`;
-  }
-
-  // Accessories — 3 random antagonist + 1 random Stability
+  // Accessories — 4 random antagonist + 1 random Stability
   const lastEntry = sessionExercises[sessionExercises.length - 1];
   if (lastEntry) {
     const movement = String(lastEntry.exercise.movement || '').trim();
@@ -620,13 +612,13 @@ function renderContent() {
     let suggestions = [];
 
     if (antagonist) {
-      // 3 random antagonist accessories
+      // 4 random antagonist accessories
       const antagonistPool = exercises.filter(e =>
         String(e.movement || '').trim() === antagonist &&
         String(e.type || '').trim().toLowerCase() === 'accessory' &&
         !addedIds.includes(String(e.id))
       );
-      const antagonistPicks = antagonistPool.sort(() => Math.random() - 0.5).slice(0, 3);
+      const antagonistPicks = antagonistPool.sort(() => Math.random() - 0.5).slice(0, 4);
       suggestions = suggestions.concat(antagonistPicks);
     }
 
@@ -648,6 +640,14 @@ function renderContent() {
       });
       html += `</div></div>`;
     }
+  }
+
+  // Balance tip — below accessories
+  const tip = getTip();
+  if (tip) {
+    html += `<div style="margin: 12px 24px 0; padding: 12px 14px; background: var(--bg2); border-radius: var(--radius); border-left: 3px solid var(--gold);">
+      <div style="font-size: 13px; color: var(--ink2);">💡 ${tip}</div>
+    </div>`;
   }
 
   content.innerHTML = html;
