@@ -529,36 +529,18 @@ async function fetchExercises() {
 }
 
 const sessionCache = {};
-const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
-
-function readCache(key) {
-  try {
-    const raw = localStorage.getItem('rtl_session_' + key);
-    if (!raw) return null;
-    const { data, ts } = JSON.parse(raw);
-    if (Date.now() - ts > CACHE_TTL) return null;
-    return data;
-  } catch(e) { return null; }
-}
-
-function writeCache(key, data) {
-  try {
-    localStorage.setItem('rtl_session_' + key, JSON.stringify({ data, ts: Date.now() }));
-  } catch(e) {}
-}
 
 async function fetchLastSession(exerciseId, { background = false } = {}) {
   const key = String(exerciseId);
   if (sessionCache[key] !== undefined) return sessionCache[key];
-  const cached = readCache(key);
-  if (cached !== null) {
-    sessionCache[key] = cached;
-    if (!background) {
-      fetch(`${SUPABASE_URL}/rest/v1/Sessions?select=*&exercise_id=eq.${key}&order=date.desc&limit=200`, { headers: SB_HEADERS })
-        .then(r => r.json())
-        .then(data => { sessionCache[key] = data; writeCache(key, data); })
-        .catch(() => {});
-    }
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/Sessions?select=*&exercise_id=eq.${key}&order=date.desc&limit=200`, { headers: SB_HEADERS });
+    sessionCache[key] = await res.json();
+  } catch(e) {
+    sessionCache[key] = [];
+  }
+  return sessionCache[key];
+}
     return cached;
   }
   try {
