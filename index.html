@@ -499,9 +499,7 @@
 </div>
 
 <script>
-const SUPABASE_URL = 'https://mhninjvapafevgznvtnb.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_FzgkyWLx4_1L9laNTL2wpA_1nQWXBNW';
-const SB_HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+// API endpoints — Supabase calls are now handled server-side via Vercel functions
 
 let exercises = [];
 let sessionId = 'S' + Date.now();
@@ -518,7 +516,7 @@ function todayISO() {
 
 async function fetchExercises() {
   try {
-    const exRes = await fetch(`${SUPABASE_URL}/rest/v1/Exercises?select=*&order=id.asc`, { headers: SB_HEADERS });
+    const exRes = await fetch('/api/exercises');
     exercises = await exRes.json();
     init();
   } catch(e) {
@@ -532,7 +530,7 @@ async function fetchLastSession(exerciseId, { background = false } = {}) {
   const key = String(exerciseId);
   if (sessionCache[key] !== undefined) return sessionCache[key];
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/Sessions?select=*&exercise_id=eq.${key}&order=date.desc&limit=200`, { headers: SB_HEADERS });
+    const res = await fetch(`/api/sessions?exercise_id=${key}`);
     sessionCache[key] = await res.json();
   } catch(e) {
     sessionCache[key] = [];
@@ -541,9 +539,9 @@ async function fetchLastSession(exerciseId, { background = false } = {}) {
 }
 
 async function logSets(sets) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/Sessions`, {
+  const res = await fetch('/api/log', {
     method: 'POST',
-    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(sets)
   });
   if (!res.ok) throw new Error(`Failed to log sets: ${res.status}`);
@@ -551,10 +549,7 @@ async function logSets(sets) {
 
 async function fetchRecentSessions() {
   try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/Sessions?select=date,session_id,exercise_name&order=date.desc&limit=150`,
-      { headers: SB_HEADERS }
-    );
+    const res = await fetch('/api/sessions/recent');
     const rows = await res.json();
     // Group by session_id, preserve order (already date desc)
     const map = {};
