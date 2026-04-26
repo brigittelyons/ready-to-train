@@ -2,7 +2,7 @@
 
 A minimal workout tracking app that lets you build your workouts on the fly. Select your primary lift, log your sets, and pivot to a different exercise if equipment is busy — all from your phone.
 
-Built as a single HTML file. No app store, no account, no install. Your data lives in your own Supabase database.
+Built as a single HTML file with serverless API functions. No app store, no account, no install. Your data lives in your own Supabase database.
 
 ---
 
@@ -12,7 +12,6 @@ Built as a single HTML file. No app store, no account, no install. Your data liv
 - See your last session stats before you start
 - Log sets with weight and reps (or just reps for bodyweight exercises)
 - Automatically suggested accessories based on antagonist movement patterns
-- Always includes a stability exercise in the suggestions
 - Tip to add a second primary lift for a balanced session
 - Add as many lifts as you need in one session
 - Everything saves to your Supabase database when you finish
@@ -24,6 +23,10 @@ Built as a single HTML file. No app store, no account, no install. Your data liv
 
 - `index.html` — the app
 - `icon.png` — home screen icon (1024x1024)
+- `api/exercises.js` — serverless function: fetches exercise list
+- `api/sessions.js` — serverless function: fetches session history for an exercise
+- `api/recent.js` — serverless function: fetches recent sessions for home screen
+- `api/log.js` — serverless function: saves sets after a workout
 - `README.md` — this file
 
 ---
@@ -60,7 +63,7 @@ The rows above are just examples — replace them with your own lifts.
 - `movement` — used to filter exercises and generate accessory suggestions. Use: `Hinge`, `Squat`, `Push`, `Pull`, or `Stability`
 - `type` — `primary` for your main lifts, `accessory` for supplemental work (lowercase, no spaces)
 
-**How accessories work:** the app automatically suggests accessories based on antagonist movement patterns — no manual tagging needed. After a Hinge primary, it suggests Squat accessories. After a Push, it suggests Pull accessories. It always includes one Stability exercise. The more exercises you add with the right `movement` and `type`, the better the suggestions.
+**How accessories work:** the app automatically suggests accessories based on antagonist movement patterns — no manual tagging needed. After a Hinge primary, it suggests Squat accessories. After a Push, it suggests Pull accessories. The more exercises you add with the right `movement` and `type`, the better the suggestions.
 
 You can add, edit, or remove exercises at any time directly in the Supabase table editor — changes appear in the app on next load.
 
@@ -96,22 +99,23 @@ Go to **Settings → Integrations → Data API** and make sure both tables are e
 
 Go to **Settings → API** and copy:
 - **Project URL** — `https://yourproject.supabase.co`
-- **Publishable key** — starts with `sb_publishable_`
+- **Secret key** — from the Secret keys section (not the publishable/anon key)
 
-Open `index.html` in a text editor and find these lines near the top of the `<script>` section:
-
-```javascript
-const SUPABASE_URL = 'https://yourproject.supabase.co';
-const SUPABASE_KEY = 'your-publishable-key';
-```
-
-Replace with your project URL and publishable key.
+These will be added to Vercel as environment variables in the next step — they never go in your code or your repo.
 
 ---
 
-### 6. Host the app
+### 6. Deploy to Vercel
 
-Push your files to a public GitHub repository, then go to **Settings → Pages**. Set the source to **Deploy from a branch**, select `main`, and click Save. GitHub will give you a URL at `yourusername.github.io/your-repo-name` within a minute or two.
+Push your files to a GitHub repository, then go to [vercel.com](https://vercel.com) and create a free Hobby account.
+
+1. Click **Add New Project** and import your GitHub repo
+2. Before deploying, go to **Settings → Environment Variables** and add:
+   - `SUPABASE_URL` — your Supabase project URL
+   - `SUPABASE_SECRET_KEY` — your Supabase secret key (mark as Sensitive)
+3. Deploy — Vercel will give you a URL at `your-project-name.vercel.app`
+
+Your credentials are stored securely on Vercel's servers and never exposed to the browser or your GitHub repo.
 
 ---
 
@@ -155,7 +159,7 @@ Edit the Exercises table in Supabase at any time — add new lifts, change movem
 
 - Vanilla HTML, CSS, JavaScript
 - Supabase as the database and API
-- Hosted on GitHub Pages
+- Vercel for hosting and serverless API functions
 
 ---
 
