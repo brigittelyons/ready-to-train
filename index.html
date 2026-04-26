@@ -549,7 +549,7 @@ async function logSets(sets) {
 
 async function fetchRecentSessions() {
   try {
-    const res = await fetch('/api/sessions/recent');
+    const res = await fetch('/api/recent');
     const rows = await res.json();
     // Group by session_id, preserve order (already date desc)
     const map = {};
