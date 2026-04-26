@@ -521,8 +521,6 @@ async function fetchExercises() {
     const exRes = await fetch(`${SUPABASE_URL}/rest/v1/Exercises?select=*&order=id.asc`, { headers: SB_HEADERS });
     exercises = await exRes.json();
     init();
-    const primaryIds = exercises.filter(e => e.type === 'primary').map(e => e.id);
-    prefetchExercises(primaryIds);
   } catch(e) {
     document.getElementById('content').innerHTML = '<div class="error-msg">Could not load. Check your connection and refresh.</div>';
   }
@@ -551,14 +549,6 @@ async function fetchLastSession(exerciseId, { background = false } = {}) {
     sessionCache[key] = [];
   }
   return sessionCache[key];
-}
-
-function prefetchExercises(ids) {
-  ids.forEach(id => {
-    const key = String(id);
-    if (sessionCache[key] !== undefined) return;
-    fetchLastSession(key, { background: true }).catch(() => {});
-  });
 }
 
 async function logSets(sets) {
