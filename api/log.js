@@ -13,6 +13,7 @@ export default async function handler(req, res) {
       body: JSON.stringify(req.body),
     }
   );
-  if (!response.ok) return res.status(response.status).json({ error: 'Failed to log sets' });
-  res.status(200).json({ success: true });
+  if (!response.ok) {
+  const errorBody = await response.text();
+  return res.status(response.status).json({ error: errorBody });
 }
