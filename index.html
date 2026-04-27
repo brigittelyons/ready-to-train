@@ -892,7 +892,7 @@ async function finishSession() {
   showToast('Saving...');
   const sets = [];
   for (const entry of sessionExercises) {
-    const savedRows = entry.rows.filter(r => r.saved);
+const savedRows = entry.rows.filter(r => r.saved || r.reps);
     savedRows.forEach((r, i) => {
       sets.push({
         date: todayISO(),
