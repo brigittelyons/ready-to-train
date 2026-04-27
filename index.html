@@ -822,24 +822,22 @@ function formatDate(iso) {
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
-
-
-
-
 function addRow(idx) {
   const entry = sessionExercises[idx];
-  const unsavedRows = entry.rows.map((r,i)=>({r,i})).filter(({r})=>!r.saved);
-  for (const {r, i} of unsavedRows) {
-    const kg = document.getElementById(`kg-${idx}-${i}`)?.value;
-    const reps = document.getElementById(`reps-${idx}-${i}`)?.value;
-    if (reps) {
-      r.weight = kg ? parseFloat(kg) : null;
-      r.reps = parseInt(reps);
-      r.saved = true;
-    }
-  }
+  const ri = entry.rows.length;
   entry.rows.push({ saved: false });
-  renderCard(idx);
+
+  const setsContainer = document.querySelector(`#card-${idx} .sets-logged`);
+  const newRow = document.createElement('div');
+  newRow.className = 'set-row';
+  newRow.id = `row-${idx}-${ri}`;
+  newRow.innerHTML = `
+    <div class="set-num" style="color:var(--ink3)">S${ri + 1}</div>
+    <input type="number" inputmode="decimal" placeholder="lbs" id="kg-${idx}-${ri}" step="0.5" style="flex:1;min-width:0;border:1px solid var(--rule);border-radius:var(--radius-sm);padding:8px 10px;font-size:14px;font-family:Inter,sans-serif;color:var(--ink);background:var(--bg);outline:none;-webkit-appearance:none;">
+    <input type="number" inputmode="numeric" placeholder="reps" id="reps-${idx}-${ri}" style="flex:1;min-width:0;border:1px solid var(--rule);border-radius:var(--radius-sm);padding:8px 10px;font-size:14px;font-family:Inter,sans-serif;color:var(--ink);background:var(--bg);outline:none;-webkit-appearance:none;">
+    <button class="set-delete" onclick="deleteRow(${idx},${ri})" aria-label="Remove row">×</button>
+  `;
+  setsContainer.appendChild(newRow);
 }
 
 function deleteRow(exerciseIdx, rowIdx) {
@@ -876,19 +874,17 @@ async function addAccessory(exerciseId, chipBtn) {
 async function finishSession() {
   if (sessionExercises.length === 0) { showToast('No lifts logged yet'); return; }
   // Read any unsaved input values before finishing
-  sessionExercises.forEach((entry, idx) => {
-    entry.rows.forEach((r, ri) => {
-      if (!r.saved) {
-        const kg = document.getElementById(`kg-${idx}-${ri}`)?.value;
-        const reps = document.getElementById(`reps-${idx}-${ri}`)?.value;
-        if (reps) {
-          r.weight = kg ? parseFloat(kg) : null;
-          r.reps = parseInt(reps);
-          r.saved = true;
-        }
-      }
-    });
+ sessionExercises.forEach((entry, idx) => {
+  entry.rows.forEach((r, ri) => {
+    const kg = document.getElementById(`kg-${idx}-${ri}`)?.value;
+    const reps = document.getElementById(`reps-${idx}-${ri}`)?.value;
+    if (reps) {
+      r.weight = kg ? parseFloat(kg) : null;
+      r.reps = parseInt(reps);
+      r.saved = true;
+    }
   });
+});
   showToast('Saving...');
   const sets = [];
   for (const entry of sessionExercises) {
