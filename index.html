@@ -822,7 +822,18 @@ function formatDate(iso) {
   if (isNaN(d)) return String(iso);
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 }
-
+function captureAllInputs() {
+  sessionExercises.forEach((entry, idx) => {
+    entry.rows.forEach((r, ri) => {
+      const kg = document.getElementById(`kg-${idx}-${ri}`)?.value;
+      const reps = document.getElementById(`reps-${idx}-${ri}`)?.value;
+      if (reps) {
+        r.weight = kg ? parseFloat(kg) : null;
+        r.reps = parseInt(reps);
+      }
+    });
+  });
+}
 function addRow(idx) {
   const entry = sessionExercises[idx];
   const ri = entry.rows.length;
@@ -842,6 +853,7 @@ function addRow(idx) {
 }
 
 function deleteRow(exerciseIdx, rowIdx) {
+  captureAllInputs();
   sessionExercises[exerciseIdx].rows.splice(rowIdx, 1);
   renderCard(exerciseIdx);
 }
@@ -854,6 +866,7 @@ function removeLift(idx) {
 let addingAccessory = false;
 async function addAccessory(exerciseId, chipBtn) {
   if (addingAccessory) return;
+   captureAllInputs();
   addingAccessory = true;
   if (chipBtn) {
     chipBtn.textContent = 'Adding...';
@@ -872,8 +885,11 @@ async function addAccessory(exerciseId, chipBtn) {
   addingAccessory = false;
 }
 
-async function finishSession() {
-  if (sessionExercises.length === 0) { showToast('No lifts logged yet'); return; }
+let saving = false;
+ async function finishSession() {
+if (saving) return;
+saving = true;
+if (sessionExercises.length === 0) { saving = false; showToast('No lifts logged yet'); return; }  
   // Read any unsaved input values before finishing
  sessionExercises.forEach((entry, idx) => {
   entry.rows.forEach((r, ri) => {
@@ -886,8 +902,9 @@ async function finishSession() {
     }
   });
 });
-  showToast('Saving...');
-  const sets = [];
+showToast('Session saved!');
+  saving = false;
+}  const sets = [];
   for (const entry of sessionExercises) {
 const savedRows = entry.rows.filter(r => r.saved || r.reps);
     savedRows.forEach((r, i) => {
