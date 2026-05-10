@@ -1003,7 +1003,7 @@ function setupModal() {
         !addedIds.includes(String(e.id))
       );
       const primaries = inMovement.filter(e => String(e.type).trim().toLowerCase() === 'primary');
-      const accessories = inMovement.filter(e => String(e.type).trim().toLowerCase() === 'accessory');
+      const accessories = inMovement.filter(e => String(e.type).trim().toLowerCase() === 'accessory').sort((a,b) => a.name.localeCompare(b.name));
       if (primaries.length > 0) {
         const grp = document.createElement('optgroup');
         grp.label = 'Primary';
