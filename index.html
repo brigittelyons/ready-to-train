@@ -976,18 +976,43 @@ function setupModal() {
     if (!g) return;
 
     const addedIds = sessionExercises.map(e => String(e.exercise.id));
-    const filtered = (g === 'All lifts'
-      ? [...exercises].sort((a,b) => a.name.localeCompare(b.name))
-      : exercises.filter(e =>
-          String(e.movement || '').split(',').map(s=>s.trim()).includes(g) &&
-          String(e.type).trim().toLowerCase() === 'primary'
-        )
-    ).filter(e => !addedIds.includes(String(e.id)));
-    filtered.forEach(ex => {
-      const opt = document.createElement('option');
-      opt.value = ex.id; opt.textContent = ex.name;
-      selExercise.appendChild(opt);
-    });
+    if (g === 'All lifts') {
+      [...exercises]
+        .sort((a,b) => a.name.localeCompare(b.name))
+        .filter(e => !addedIds.includes(String(e.id)))
+        .forEach(ex => {
+          const opt = document.createElement('option');
+          opt.value = ex.id; opt.textContent = ex.name;
+          selExercise.appendChild(opt);
+        });
+    } else {
+      const inMovement = exercises.filter(e =>
+        String(e.movement || '').split(',').map(s => s.trim()).includes(g) &&
+        !addedIds.includes(String(e.id))
+      );
+      const primaries = inMovement.filter(e => String(e.type).trim().toLowerCase() === 'primary');
+      const accessories = inMovement.filter(e => String(e.type).trim().toLowerCase() === 'accessory');
+      if (primaries.length > 0) {
+        const grp = document.createElement('optgroup');
+        grp.label = 'Primary';
+        primaries.forEach(ex => {
+          const opt = document.createElement('option');
+          opt.value = ex.id; opt.textContent = ex.name;
+          grp.appendChild(opt);
+        });
+        selExercise.appendChild(grp);
+      }
+      if (accessories.length > 0) {
+        const grp = document.createElement('optgroup');
+        grp.label = 'Accessories';
+        accessories.forEach(ex => {
+          const opt = document.createElement('option');
+          opt.value = ex.id; opt.textContent = ex.name;
+          grp.appendChild(opt);
+        });
+        selExercise.appendChild(grp);
+      }
+    }
   });
 
   selExercise.addEventListener('change', async () => {
