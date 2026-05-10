@@ -9,9 +9,10 @@ Built as a single HTML file with serverless API functions. No app store, no acco
 ## Features
 
 - Pick a primary lift by movement pattern, or browse all exercises at once
+- When browsing by movement, primary lifts appear first followed by accessories for that pattern
 - See your last session stats before you start
 - Log sets with weight and reps (or just reps for bodyweight exercises)
-- Automatically suggested accessories based on antagonist movement patterns
+- Accessory chips update as you add primary lifts — 3 suggestions per antagonist movement, 2 Stability, color-coded by movement type
 - Tip to add a second primary lift for a balanced session
 - Add as many lifts as you need in one session
 - Everything saves to your Supabase database when you finish
@@ -63,7 +64,7 @@ The rows above are just examples — replace them with your own lifts.
 - `movement` — used to filter exercises and generate accessory suggestions. Use: `Hinge`, `Squat`, `Push`, `Pull`, or `Stability`
 - `type` — `primary` for your main lifts, `accessory` for supplemental work (lowercase, no spaces)
 
-**How accessories work:** the app automatically suggests accessories based on antagonist movement patterns — no manual tagging needed. After a Hinge primary, it suggests Squat accessories. After a Push, it suggests Pull accessories. The more exercises you add with the right `movement` and `type`, the better the suggestions.
+**How accessories work:** the app automatically suggests accessories based on antagonist movement patterns — no manual tagging needed. After a Hinge primary, it suggests Squat accessories. After a Push, it suggests Pull accessories. Suggestions update as you add primary lifts, so if you do two main lifts before your accessory work, chips for both movements are shown at once. The more exercises you add with the right `movement` and `type`, the better the suggestions.
 
 You can add, edit, or remove exercises at any time directly in the Supabase table editor — changes appear in the app on next load.
 
@@ -148,9 +149,10 @@ Edit the Exercises table in Supabase at any time — add new lifts, change movem
 
 ## Color palette
 
-- `#832161` — Royal Plum
-- `#9b7ede` — Soft Periwinkle
-- `#e8db7d` — Gold
+- `#832161` — Royal Plum (primary action color)
+- `#9b7ede` — Soft Periwinkle (secondary action color; also Squat/Hinge accessory chips)
+- `#e8db7d` — Gold (accents; Stability accessory chips)
+- `#97EFE9` — Aqua (Pull/Push accessory chips)
 - `#1a1a1a` — Near Black (icon background)
 
 ---
