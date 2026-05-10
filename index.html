@@ -745,14 +745,20 @@ function renderContent() {
     html += buildCardHTML(entry, idx);
   });
 
-  // Accessories — 4 random antagonist + 1 random Stability
+  html += `<div id="accessories-container">${getAccessoriesHTML()}</div>`;
+  content.innerHTML = html;
+  content.scrollTop = content.scrollHeight;
+  document.getElementById('btn-add-lift').textContent = sessionExercises.length === 0 ? '+ Start session' : '+ Add lift';
+}
+
+function getAccessoriesHTML() {
+  let html = '';
   const lastEntry = sessionExercises[sessionExercises.length - 1];
   if (lastEntry) {
     const movement = String(lastEntry.exercise.movement || '').trim();
     const antagonist = ANTAGONIST[movement];
     const addedIds = sessionExercises.map(e => String(e.exercise.id));
     let suggestions = [];
-
     if (antagonist) {
       const antagonistPool = exercises.filter(e =>
         String(e.movement || '').trim() === antagonist &&
@@ -761,36 +767,48 @@ function renderContent() {
       );
       suggestions = suggestions.concat(antagonistPool.sort(() => Math.random() - 0.5).slice(0, 4));
     }
-
     const stabilityPool = exercises.filter(e =>
       String(e.movement || '').trim() === 'Stability' &&
       String(e.type || '').trim().toLowerCase() === 'accessory' &&
       !addedIds.includes(String(e.id))
     );
     suggestions = suggestions.concat(stabilityPool.sort(() => Math.random() - 0.5).slice(0, 1));
-
     if (suggestions.length > 0) {
-      html += `<div class="accessories-section">
-        <div class="accessories-label">Suggested accessories</div>
-        <div class="accessory-chips">`;
+      html += `<div class="accessories-section"><div class="accessories-label">Suggested accessories</div><div class="accessory-chips">`;
       suggestions.forEach(acc => {
         html += `<button class="accessory-chip" id="chip-${acc.id}" onclick="addAccessory(${acc.id}, this)">${acc.name}</button>`;
       });
       html += `</div></div>`;
     }
   }
-
-  // Balance tip — below accessories
   const tip = getTip();
   if (tip) {
     html += `<div style="margin: 12px 24px 0; padding: 12px 14px; background: var(--bg2); border-radius: var(--radius); border-left: 3px solid var(--gold);">
       <div style="font-size: 13px; color: var(--ink2);">💡 ${tip}</div>
     </div>`;
   }
+  return html;
+}
 
-  content.innerHTML = html;
+function appendCard(idx) {
+  const content = document.getElementById('content');
+  const historyBtn = document.getElementById('btn-history');
+  if (historyBtn) historyBtn.style.display = 'block';
+  document.getElementById('btn-add-lift').textContent = '+ Add lift';
+
+  const old = document.getElementById('accessories-container');
+  if (old) old.remove();
+
+  const tmp = document.createElement('div');
+  tmp.innerHTML = buildCardHTML(sessionExercises[idx], idx);
+  content.appendChild(tmp.firstElementChild);
+
+  const container = document.createElement('div');
+  container.id = 'accessories-container';
+  container.innerHTML = getAccessoriesHTML();
+  content.appendChild(container);
+
   content.scrollTop = content.scrollHeight;
-  document.getElementById('btn-add-lift').textContent = sessionExercises.length === 0 ? '+ Start session' : '+ Add lift';
 }
 
 function groupBySession(rows) {
@@ -873,7 +891,7 @@ async function addAccessory(exerciseId, chipBtn) {
   if (!ex) { addingAccessory = false; return; }
   const idx = sessionExercises.length;
   sessionExercises.push({ exercise: ex, rows: [{ saved: false }], lastSets: null, loading: true, done: false });
-  renderContent();
+  appendCard(idx);
   const lastSets = await fetchLastSession(exerciseId);
   sessionExercises[idx].lastSets = lastSets;
   sessionExercises[idx].loading = false;
@@ -1000,7 +1018,7 @@ function setupModal() {
     const rows = await fetchLastSession(id);
     sessionExercises.push({ exercise: ex, rows: [{ saved: false }], lastSets: rows, done: false });
     closeModal();
-    renderContent();
+    appendCard(sessionExercises.length - 1);
     adding = false;
   });
 }
