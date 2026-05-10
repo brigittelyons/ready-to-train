@@ -684,6 +684,14 @@ function renderCard(idx) {
   card.replaceWith(tmp.firstElementChild);
 }
 
+const MOVEMENT_COLOR = {
+  'Pull':      '#9b7ede',
+  'Push':      '#832161',
+  'Squat':     '#ACEDFF',
+  'Hinge':     '#E94F37',
+  'Stability': '#e8db7d',
+};
+
 const ANTAGONIST = {
   'Hinge': 'Squat',
   'Squat': 'Hinge',
@@ -789,7 +797,8 @@ function getAccessoriesHTML() {
   if (suggestions.length > 0) {
     html += `<div class="accessories-section"><div class="accessories-label">Suggested accessories</div><div class="accessory-chips">`;
     suggestions.forEach(acc => {
-      html += `<button class="accessory-chip" id="chip-${acc.id}" onclick="addAccessory(${acc.id}, this)">${acc.name}</button>`;
+      const chipColor = MOVEMENT_COLOR[String(acc.movement || '').trim()] || '#e8db7d';
+      html += `<button class="accessory-chip" id="chip-${acc.id}" onclick="addAccessory(${acc.id}, this)" style="border-color:${chipColor}">${acc.name}</button>`;
     });
     html += `</div></div>`;
   }
